@@ -15,5 +15,8 @@ return {
   history_length = 24,          -- number of data points to keep for sparklines
   history_interval_minutes = 5, -- how often to record price history
 
+  -- Discord webhook for market news
+  discord_webhook = nil,       -- e.g. "https://discord.com/api/webhooks/..."
+
   monitor = nil,               -- peripheral name of the price-board monitor (nil = auto-detect, none = no board)
 }

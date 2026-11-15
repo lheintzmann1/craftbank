@@ -14,4 +14,11 @@ return {
     interbank_flat = 500,             -- cents (500 = 5.00 Cr) added to transfers leaving the bank
     max_accounts_per_owner = 3,
   },
+
+  -- Discord webhook for notifications (optional)
+  -- Set to a Discord webhook URL to enable notifications for big transfers and alerts
+  discord_webhook = nil,             -- e.g. "https://discord.com/api/webhooks/..."
+  discord_big_transfer_threshold = 100000,  -- cents (1000 = 10.00 Cr) minimum amount to notify
+  discord_notify_pending = true,    -- notify when transfers are pending
+  discord_notify_limits = true,      -- notify when bank hits interbank limits
 }

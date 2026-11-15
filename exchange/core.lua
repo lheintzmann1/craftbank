@@ -35,6 +35,7 @@ function X.new(o)
   self.db, self.save, self.clock, self.deliver = o.db, o.save or function() end, o.clock, o.deliver
   self.cfg = o.cfg or {}
   self.rand = o.rand or math.random
+  self.notify = o.notify or function() end  -- callback for webhook notifications
   local db = self.db
   db.banks = db.banks or {}; db.pos = db.pos or {}; db.items = db.items or {}
   db.events = db.events or {}; db.stats = db.stats or {}; db.tx = db.tx or {}
@@ -242,6 +243,10 @@ end
 function X:add_event(item, cat, mult, mins, text, now)
   table.insert(self.db.events, { item = item, cat = cat, mult = mult, exp = now + mins * 60000, text = text })
   self.save()
+  -- Notify via callback if configured
+  if self.notify then
+    self.notify("event", { text = text, mult = mult, mins = mins })
+  end
 end
 
 ---------------------------------------------------------------- request handling

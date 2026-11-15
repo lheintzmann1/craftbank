@@ -8,6 +8,7 @@ local serial = require("common.serial")
 local proto  = require("common.protocol")
 local proc   = require("common.proc")
 local money  = require("common.money")
+local webhook = require("common.webhook")
 local Bank   = require("bank.core")
 
 for _, side in ipairs(redstone.getSides()) do
@@ -20,6 +21,23 @@ fs.makeDir(datadir)
 local db = store.open(datadir .. "/accounts.db")
 
 local exch = proto.client({ dev = "bank:" .. cfg.number, key = cfg.exchange_key, host = "exchange", fixed = cfg.exchange_computer })
+
+-- Webhook notification helper
+local function notify_webhook(event, data)
+  if not cfg.discord_webhook then return end
+  local ok, err = pcall(function()
+    if event == "transfer" then
+      local threshold = cfg.discord_big_transfer_threshold or 100000
+      if data.amount >= threshold then
+        webhook.notify_transfer(cfg.discord_webhook, data.from, data.to, data.amount, data.fee, cfg.name)
+      end
+    elseif event == "pending" and cfg.discord_notify_pending then
+      webhook.notify_alert(cfg.discord_webhook, "pending", data.message, cfg.number, cfg.name)
+    elseif event == "limit" and cfg.discord_notify_limits then
+      webhook.notify_alert(cfg.discord_webhook, "limit", data.message, cfg.number, cfg.name)
+    end
+  end)
+end
 
 local bank = Bank.new({
   number = cfg.number, name = cfg.name, db = db.data, save = db.save, clock = proto.now, fees = cfg.fees,
@@ -97,7 +115,32 @@ proc.spawn(cli)
 proc.spawn(function()
   proto.serve({
     hostname = "bank-" .. cfg.number, label = "bank", keyfn = keyfn, spawn = proc.spawn,
-    handle = function(devid, msg) return bank:handle(devid, msg) end,
+    handle = function(devid, msg)
+      local r = bank:handle(devid, msg)
+      -- Notify Discord for various events
+      if cfg.discord_webhook then
+        local ok, err = pcall(function()
+          if msg.type == "transfer" and r and r.ok and msg.amount >= (cfg.discord_big_transfer_threshold or 100000) then
+            -- Extract from account from token if we can
+            local from_acct = "Unknown"
+            if msg.tok then
+              for tok, session in pairs(bank.sessions) do
+                if tok == msg.tok then
+                  from_acct = bank:full(session.acct)
+                  break
+                end
+              end
+            end
+            webhook.notify_transfer(cfg.discord_webhook, from_acct, msg.to or "Unknown", msg.amount, 0, cfg.name)
+          elseif msg.type == "deposit" and r and r.ok and cfg.discord_notify_pending then
+            webhook.notify_alert(cfg.discord_webhook, "deposit", "Large deposit: " .. money.fmt(msg.amount or 0) .. " Cr", cfg.number, cfg.name)
+          elseif msg.type == "withdraw" and r and r.ok and cfg.discord_notify_pending then
+            webhook.notify_alert(cfg.discord_webhook, "withdraw", "Large withdrawal: " .. money.fmt(msg.amount or 0) .. " Cr", cfg.number, cfg.name)
+          end
+        end)
+      end
+      return r
+    end,
   })
 end)
 proc.run()

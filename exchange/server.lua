@@ -9,6 +9,7 @@ local proto  = require("common.protocol")
 local proc   = require("common.proc")
 local money  = require("common.money")
 local items  = require("common.items")
+local webhook = require("common.webhook")
 local Exchange = require("exchange.core")
 
 for _, side in ipairs(redstone.getSides()) do
@@ -29,8 +30,17 @@ local function deliver(no, msg)
   return clients[no]:call(msg, 8, msg.type == "x_credit" and 2 or 1)
 end
 
+local function notify_handler(event, data)
+  if cfg.discord_webhook then
+    if event == "event" then
+      webhook.notify_event(cfg.discord_webhook, data.text or "", data.mult or 1, data.mins or 0)
+    end
+  end
+end
+
 local X = Exchange.new({ db = db.data, save = db.save, clock = proto.now, deliver = deliver, cfg = cfg,
-  rand = function() return proto.rand_int(1000000) / 1000000 end })
+  rand = function() return proto.rand_int(1000000) / 1000000 end,
+  notify = notify_handler })
 
 local function keyfn(devid)
   local no = tonumber(devid:match("^bank:(%d+)$") or "")
@@ -208,8 +218,15 @@ local function cli()
     elseif cmd == "event" and tonumber(a[3]) and tonumber(a[4]) then
       local target = a[2]
       local is_item = target:find(":", 1, true)
-      X:add_event(is_item and target or nil, (not is_item) and target or nil, tonumber(a[3]), tonumber(a[4]), table.concat(a, " ", 5), proto.now())
+      local text = table.concat(a, " ", 5)
+      local mult = tonumber(a[3])
+      local mins = tonumber(a[4])
+      X:add_event(is_item and target or nil, (not is_item) and target or nil, mult, mins, text, proto.now())
       print("event added")
+      -- Notify Discord if webhook is configured
+      if cfg.discord_webhook then
+        webhook.notify_event(cfg.discord_webhook, text, mult, mins)
+      end
     elseif cmd and cmd ~= "" then print("unknown command, try 'help'") end
   end
 end
