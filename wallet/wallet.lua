@@ -3,7 +3,7 @@
 local dir = fs.getDir(shell.getRunningProgram())
 package.path = "/" .. dir .. "/?.lua;" .. package.path
 
-local cfg    = require("wallet.config")
+local cfg    = require("config")
 local const  = require("common.const")
 local money  = require("common.money")
 local proto  = require("common.protocol")
