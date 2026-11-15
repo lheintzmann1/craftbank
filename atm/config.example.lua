@@ -12,7 +12,7 @@ return {
 
   -- Inventories on the wired-modem network. nil = auto-detect:
   --   io_chest = the (only) chest   -> the single chest players use for deposit AND withdraw
-  --   vault    = all barrels        -> the hidden cash storage behind the wall
+  --   vault    = all barrels        -> the hidden cash storage behind the wall (use table, e.g. {"minecraft:shulker_box_0"})
   io_chest = nil,
   vault    = nil,
 

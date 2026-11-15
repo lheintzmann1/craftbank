@@ -23,9 +23,11 @@ local ui = UI.new(mon, cfg.monitor or peripheral.getName(mon))
 
 local chest = cfg.io_chest or inv.names("chest")[1]
 local vault = cfg.vault or inv.names("barrel")
+-- Ensure vault is always a table (array)
+if type(vault) == "string" then vault = { vault } end
 local function hw_error()
   if not chest then return "No chest on the network" end
-  if #vault == 0 then return "No vault barrels" end
+  if #vault == 0 then return "No vault storage" end
 end
 
 local link = proto.client({ dev = cfg.device_id, key = cfg.device_key, host = "bank-" .. cfg.bank_no, fixed = cfg.bank_computer })
