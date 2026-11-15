@@ -1,7 +1,7 @@
 -- CraftBank installer.  On a CC computer:
 --     wget run https://raw.githubusercontent.com/YOUR_USER/craftbank/main/install.lua <atm|shop|bank|exchange>
 -- Re-run any time to update code; your config.lua is never overwritten.
-local BASE = "https://raw.githubusercontent.com/YOUR_USER/craftbank/main/"   -- <-- edit after you push the repo
+local BASE = "https://raw.githubusercontent.com/lheintzmann1/craftbank/main/"   -- <-- edit after you push the repo
 local ROOT = "/craftbank"
 
 local role = ({ ... })[1]
