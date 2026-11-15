@@ -66,7 +66,8 @@ end
 
 local function get_player_name()
   if not pd then return nil end
-  local names = pd.getPlayerNames()
+  local ok, names = pcall(function() return pd.getPlayerNames() end)
+  if not ok then return nil end
   return names and names[1]
 end
 
