@@ -11,5 +11,9 @@ return {
   stats_poll = 120,            -- seconds
   stat_weights = { mined = 0.5, crafted = 0.3, used = 0.25, broken = 0.5 },
 
+  -- Price history for sparklines on the board
+  history_length = 24,          -- number of data points to keep for sparklines
+  history_interval_minutes = 5, -- how often to record price history
+
   monitor = nil,               -- peripheral name of the price-board monitor (nil = auto-detect, none = no board)
 }

@@ -39,6 +39,8 @@ function X.new(o)
   db.banks = db.banks or {}; db.pos = db.pos or {}; db.items = db.items or {}
   db.events = db.events or {}; db.stats = db.stats or {}; db.tx = db.tx or {}
   db.stat_totals = db.stat_totals or {}
+  db.price_history = db.price_history or {}    -- { [id] = { { t, mid }, ... } }
+  db.index_history = db.index_history or {}     -- { { t, index }, ... }
   return self
 end
 
@@ -96,6 +98,97 @@ function X:mid(id, now)
   return par and pricing.mid(par, self:flow(id, now), self:event_mult(id, now))
 end
 
+-- Record current price for history tracking
+function X:record_history(now)
+  -- Record price history for sparklines
+  local history_len = self.cfg.history_length or 24  -- number of data points to keep
+  for id, par in pairs(items.byId) do
+    if not par.peg then
+      local mid = self:mid(id, now)
+      self.db.price_history[id] = self.db.price_history[id] or {}
+      local hist = self.db.price_history[id]
+      -- Add new data point
+      table.insert(hist, 1, { t = now, mid = mid })
+      -- Keep only history_len points
+      while #hist > history_len do table.remove(hist) end
+    end
+  end
+  
+  -- Calculate and record economy index (average of all non-pegged item prices)
+  local sum, count = 0, 0
+  for id, par in pairs(items.byId) do
+    if not par.peg then
+      sum = sum + (self:mid(id, now) or par.base)
+      count = count + 1
+    end
+  end
+  local index = count > 0 and sum / count or 0
+  
+  self.db.index_history = self.db.index_history or {}
+  local idx_hist = self.db.index_history
+  table.insert(idx_hist, 1, { t = now, index = index })
+  while #idx_hist > history_len do table.remove(idx_hist) end
+  
+  return index
+end
+
+-- Get sparkline data for an item
+function X:sparkline_data(id, now)
+  local hist = self.db.price_history[id]
+  if not hist or #hist == 0 then return nil, nil, nil end
+  
+  local min_t, max_t = now, now
+  local min_p, max_p = hist[1].mid, hist[1].mid
+  
+  for _, entry in ipairs(hist) do
+    min_t = math.min(min_t, entry.t)
+    max_t = math.max(max_t, entry.t)
+    min_p = math.min(min_p, entry.mid)
+    max_p = math.max(max_p, entry.mid)
+  end
+  
+  -- Normalize to 0-8 range for sparkline characters
+  local range = max_p - min_p
+  if range == 0 then range = 1 end  -- avoid division by zero
+  
+  local sparkline = ""
+  for _, entry in ipairs(hist) do
+    local normalized = math.floor(((entry.mid - min_p) / range) * 8)
+    sparkline = sparkline .. string.char(0x2581 + math.min(8, math.max(0, normalized)))
+  end
+  
+  return sparkline, min_p, max_p
+end
+
+-- Get economy index
+function X:economy_index(now)
+  if #self.db.index_history == 0 then return 0 end
+  return self.db.index_history[1].index
+end
+
+-- Get index sparkline
+function X:index_sparkline(now)
+  local hist = self.db.index_history
+  if not hist or #hist == 0 then return "" end
+  
+  local min_idx, max_idx = hist[1].index, hist[1].index
+  for _, entry in ipairs(hist) do
+    min_idx = math.min(min_idx, entry.index)
+    max_idx = math.max(max_idx, entry.index)
+  end
+  
+  local range = max_idx - min_idx
+  if range == 0 then range = 1 end
+  
+  local sparkline = ""
+  for _, entry in ipairs(hist) do
+    local normalized = math.floor(((entry.index - min_idx) / range) * 8)
+    sparkline = sparkline .. string.char(0x2581 + math.min(8, math.max(0, normalized)))
+  end
+  
+  return sparkline, min_idx, max_idx
+end
+
 function X:apply_trade(id, side, qty, now)
   if not items.byId[id] then return false end
   self:set_flow(id, self:flow(id, now) + pricing.delta(side, qty), now)
@@ -137,6 +230,12 @@ function X:tick(now)
     local t = EVENT_TEMPLATES[1 + math.floor(self.rand() * #EVENT_TEMPLATES) % #EVENT_TEMPLATES]
     self:add_event(t.item, t.cat, t.mult, t.mins, t.text, now)
     self.db.next_event = now + (30 + math.floor(self.rand() * 60)) * 60000
+  end
+  -- Record price history every tick (configurable interval)
+  local history_interval = self.cfg.history_interval_minutes or 5
+  if not self.db.last_history_record or now - self.db.last_history_record >= history_interval * 60000 then
+    self:record_history(now)
+    self.db.last_history_record = now
   end
 end
 

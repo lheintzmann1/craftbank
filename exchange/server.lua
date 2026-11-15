@@ -38,12 +38,39 @@ local function keyfn(devid)
   return b and b.key
 end
 
+---------------------------------------------------------------- sparkline helper
+-- ASCII sparkline characters (8 levels from empty to full)
+local SPARKLINE_CHARS = {" ", "\128", "\129", "\130", "\131", "\132", "\133", "\134", "\135"}
+-- Alternative if extended ASCII doesn't work:
+-- local SPARKLINE_CHARS = {" ", ".", ":", "-", "=", "*", "#", "@", "█"}
+
+local function render_sparkline(hist, w)
+  if not hist or #hist == 0 then return "" end
+  local min_val, max_val = hist[1], hist[1]
+  for _, v in ipairs(hist) do
+    min_val = math.min(min_val, v)
+    max_val = math.max(max_val, v)
+  end
+  local range = max_val - min_val
+  if range == 0 then range = 1 end
+  local sparkline = ""
+  for _, v in ipairs(hist) do
+    local idx = math.floor(((v - min_val) / range) * 8) + 1
+    sparkline = sparkline .. SPARKLINE_CHARS[math.min(9, math.max(1, idx))]
+  end
+  -- Pad or truncate to width
+  if #sparkline < w then sparkline = sparkline .. string.rep(" ", w - #sparkline)
+  elseif #sparkline > w then sparkline = sparkline:sub(1, w) end
+  return sparkline
+end
+
 ---------------------------------------------------------------- price board (monitor)
 local function board()
   local mon = cfg.monitor and peripheral.wrap(cfg.monitor) or peripheral.find("monitor")
   if not mon then return end
   mon.setTextScale(1)
   local page = 0
+  local spark_w = 10  -- width of sparkline
   while true do
     sleep(8)
     local now = proto.now()
@@ -54,7 +81,7 @@ local function board()
         rows[#rows + 1] = { id = id, pct = X:mid(id, now) / par.base - 1, mid = X:mid(id, now) }
       end
     end
-    page = (page + 1) % 3
+    page = (page + 1) % 4  -- added a new page for index
     local w, h = mon.getSize()
     mon.setBackgroundColor(colors.black); mon.clear()
     local function line(y, text, fg) mon.setCursorPos(1, y); mon.setTextColor(fg or colors.white); mon.write(text:sub(1, w)) end
@@ -63,11 +90,20 @@ local function board()
       line(1, page == 0 and "== RISING ==" or "== FALLING ==", colors.yellow)
       for i = 1, math.min(#rows, h - 2) do
         local r = rows[i]
-        local txt = string.format("%-" .. math.max(8, w - 18) .. "s %9s %+5.0f%%", items.display(r.id):sub(1, math.max(8, w - 18)), money.short(math.floor(r.mid)), r.pct * 100)
+        -- Get price history for sparkline
+        local hist = {}
+        if db.data.price_history and db.data.price_history[r.id] then
+          for _, entry in ipairs(db.data.price_history[r.id]) do
+            hist[#hist + 1] = entry.mid
+          end
+        end
+        local spark = render_sparkline(hist, spark_w)
+        local item_name = items.display(r.id):sub(1, math.max(8, w - 22 - spark_w))
+        local txt = string.format("%s%s %9s %+5.0f%%", spark, item_name, money.short(math.floor(r.mid)), r.pct * 100)
         line(i + 1, txt, r.pct >= 0 and colors.lime or colors.red)
       end
       if #rows == 0 then line(3, "Markets are calm.", colors.lightGray) end
-    else
+    elseif page == 2 then
       line(1, "== NEWS & BANKS ==", colors.yellow)
       local y = 2
       for _, e in ipairs(db.data.events) do
@@ -75,6 +111,36 @@ local function board()
       end
       for no, b in pairs(db.data.banks) do
         if y < h then local p = db.data.pos[no] or 0; line(y, string.format("%02d %s %s", no, b.name:sub(1, w - 14), money.short(p)), p >= 0 and colors.lime or colors.red); y = y + 1 end
+      end
+    else -- page 3: Economy Index
+      line(1, "== ECONOMY INDEX ==", colors.yellow)
+      local index = X:economy_index(now)
+      local index_hist = {}
+      if db.data.index_history then
+        for _, entry in ipairs(db.data.index_history) do
+          index_hist[#index_hist + 1] = entry.index
+        end
+      end
+      local index_spark = render_sparkline(index_hist, spark_w)
+      line(2, "Index: " .. money.short(math.floor(index or 0)) .. " Cr")
+      line(3, "Trend: " .. index_spark)
+      
+      -- Show top movers
+      line(5, "Top Movers:", colors.yellow)
+      local all_items = {}
+      for id, par in pairs(items.byId) do
+        if not par.peg then
+          local mid = X:mid(id, now)
+          local base = par.base
+          all_items[#all_items + 1] = { id = id, pct = (mid - base) / base * 100, mid = mid }
+        end
+      end
+      table.sort(all_items, function(a, b) return math.abs(a.pct) > math.abs(b.pct) end)
+      for i = 1, math.min(5, h - 6) do
+        local item = all_items[i]
+        local display = items.display(item.id):sub(1, w - 20)
+        local pct_str = string.format("%+5.0f%%", item.pct)
+        line(5 + i, string.format("  %s %s", display, pct_str), item.pct >= 0 and colors.lime or colors.red)
       end
     end
   end
