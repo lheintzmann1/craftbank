@@ -77,6 +77,15 @@ end
 ---------------------------------------------------------------- price board (monitor)
 local function board()
   local mon = cfg.monitor and peripheral.wrap(cfg.monitor) or peripheral.find("monitor")
+  -- Also try directly attached monitors (left, right, top, bottom, front, back)
+  if not mon then
+    for _, side in ipairs({"left", "right", "top", "bottom", "front", "back"}) do
+      if peripheral.getType(side) == "monitor" then
+        mon = peripheral.wrap(side)
+        break
+      end
+    end
+  end
   if not mon then return end
   mon.setTextScale(1)
   local page = 0
