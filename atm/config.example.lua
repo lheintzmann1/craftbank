@@ -16,12 +16,6 @@ return {
   io_chest = nil,
   vault    = nil,
 
-  -- Auto-login with Advanced Peripherals Player Detector:
-  --   player_detector = peripheral name of the player detector, or nil to disable
-  --   name_map = { ["playername"] = "BB-NNNNNN", ... } maps player names to account numbers
-  player_detector = nil,
-  name_map = {},
-
   -- what the ATM accepts for deposits: item -> value in diamonds (1 diamond = 1000 Cr)
   accept = { ["minecraft:diamond"] = 1, ["minecraft:diamond_block"] = 9 },
 
