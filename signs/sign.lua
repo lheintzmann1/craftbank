@@ -1,7 +1,7 @@
 -- Shop Sign Monitor: Displays scrolling price boards for market streets
 -- Run on a computer with a monitor attached. Shows live prices from the exchange.
 local dir = fs.getDir(shell.getRunningProgram())
-package.path = "/" .. dir .. "/?.lua;" .. package.path
+package.path = "/" .. dir .. "/?.lua;" .. "/" .. fs.getDir(dir) .. "/?.lua;" .. package.path
 
 local cfg     = require("config")
 local proto   = require("common.protocol")

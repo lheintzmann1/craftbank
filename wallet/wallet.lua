@@ -1,7 +1,7 @@
 -- Pocket-computer wallet: balance, generate pay code, transfer
 -- Run on a pocket computer with a modem. Uses the terminal for UI.
 local dir = fs.getDir(shell.getRunningProgram())
-package.path = "/" .. dir .. "/?.lua;" .. package.path
+package.path = "/" .. dir .. "/?.lua;" .. "/" .. fs.getDir(dir) .. "/?.lua;" .. package.path
 
 local cfg    = require("config")
 local const  = require("common.const")
