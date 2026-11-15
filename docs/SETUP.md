@@ -46,10 +46,10 @@ reboot
 ```
 On its console register every bank (use `_` for spaces in the name):
 ```
-> bank add 1 Royal_Bank 50
+> bank add 1 Royal_Bank 50000
 Bank registered. Give the owner this exchange_key: 3f9a...
 ```
-`50` = max net interbank debt in Cr... pass cents-free Cr, e.g. `5000` for 5,000 Cr (default 50 diamonds = 50,000 Cr).
+`50000` = max net interbank debt for this bank, in Cr (50,000 Cr = 50 diamonds; this is also the default if omitted).
 
 ### Bank (one per player-owned bank)
 ```
