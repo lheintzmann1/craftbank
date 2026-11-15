@@ -1,0 +1,5 @@
+# real configs contain device keys - never commit them
+*/config.lua
+*.db
+*.log
+*.bak
