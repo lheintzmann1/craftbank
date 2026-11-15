@@ -25,6 +25,10 @@ local chest = cfg.io_chest or inv.names("chest")[1]
 local vault = cfg.vault or inv.names("barrel")
 -- Ensure vault is always a table (array)
 if type(vault) == "string" then vault = { vault } end
+
+-- Player detector for auto-login
+local pd = cfg.player_detector and peripheral.wrap(cfg.player_detector)
+
 local function hw_error()
   if not chest then return "No chest on the network" end
   if #vault == 0 then return "No vault storage" end
@@ -60,9 +64,30 @@ local function logout()
   if S then call({ type = "logout", tok = S.tok }); S = nil end
 end
 
+local function get_player_name()
+  if not pd then return nil end
+  local names = pd.getPlayerNames()
+  return names and names[1]
+end
+
 local function login()
-  local acct = ui:keypad("Account no.", { maxlen = 8, minlen = 8, hint = "BB-NNNNNN", fmt = fmt_acct, timeout = 60 })
-  if not acct then return end
+  -- Try auto-login with player detector
+  local acct = nil
+  if pd then
+    local player = get_player_name()
+    if player and cfg.name_map[player] then
+      -- Auto-detected player with a mapped account
+      acct = cfg.name_map[player]
+      ui:message("Welcome", { "Detected: " .. player, "Account: " .. fmt_acct(acct) }, "ok", 3)
+    end
+  end
+  
+  -- If no auto-login or user cancelled, prompt for account
+  if not acct then
+    acct = ui:keypad("Account no.", { maxlen = 8, minlen = 8, hint = "BB-NNNNNN", fmt = fmt_acct, timeout = 60 })
+    if not acct then return end
+  end
+  
   local pin = ui:keypad("PIN", { maxlen = 4, minlen = 4, masked = true, timeout = 60 })
   if not pin then return end
   ui:splash("Login")
