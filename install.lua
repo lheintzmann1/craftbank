@@ -5,13 +5,13 @@ local BASE = "https://raw.githubusercontent.com/lheintzmann1/craftbank/main/"   
 local ROOT = "/craftbank"
 
 local role = ({ ... })[1]
-local MAIN = { atm = "atm/atm.lua", shop = "shop/shop.lua", bank = "bank/server.lua", exchange = "exchange/server.lua" }
-if not MAIN[role] then error("usage: install <atm|shop|bank|exchange>", 0) end
+local MAIN = { atm = "atm/atm.lua", shop = "shop/shop.lua", bank = "bank/server.lua", exchange = "exchange/server.lua", wallet = "wallet/wallet.lua", signs = "signs/sign.lua" }
+if not MAIN[role] then error("usage: install <atm|shop|bank|exchange|wallet|signs>", 0) end
 
 local files = {
   "common/const.lua", "common/money.lua", "common/serial.lua", "common/sha256.lua", "common/protocol.lua",
   "common/proc.lua", "common/storage.lua", "common/items.lua", "common/pricing.lua", "common/ui.lua",
-  "common/inventory.lua", "data/base_prices.lua",
+  "common/inventory.lua", "common/webhook.lua", "data/base_prices.lua",
   MAIN[role], role .. "/config.example.lua",
 }
 if role == "bank" then files[#files + 1] = "bank/core.lua" end
